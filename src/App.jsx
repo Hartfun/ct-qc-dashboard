@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import InputForm from './components/InputForm'
 import ResultCard from './components/ResultCard'
 import ParameterTable from './components/ParameterTable'
-import logoUrl from './assets/logo_WP.svg'
+import logoUrl from './assets/logo_Wp.svg'
 
 const API = 'https://ct-qc-ml.onrender.com'
 
