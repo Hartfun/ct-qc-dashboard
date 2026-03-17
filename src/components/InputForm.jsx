@@ -71,14 +71,14 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         <div className="section-header orange">☢️ Radiation Dose</div>
         <div className="section-body bg-orange-pale">
           <div className="grid mb">
-            {field('Head 21.50', 'dhead')}
-            {field('Body 10.60', 'dbody')}
+            {field('Head', 'dhead')}
+            {field('Body', 'dbody')}
           </div>
         </div>
       </div>
 
       <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header gray">🔬 Leakage (mR/hr) — AERB Limit: 115</div>
+        <div className="section-header gray">🔬 Leakage (mR/hr)</div>
         <div className="section-body">
           <div className="leak-grid mb">
             {field('🔼 Front', 'lf')}

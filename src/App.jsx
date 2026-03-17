@@ -87,7 +87,7 @@ export default function App() {
               }}/>
           <div>
       <h1>CT QC Anomaly Detection</h1>
-      <div className="subtitle">ISO + LOF Ensemble Model &nbsp;|&nbsp; MSc Big Data 2026</div>
+      <div className="subtitle">ISO + LOF Ensemble Model</div>
   </div>
 </div>
 
