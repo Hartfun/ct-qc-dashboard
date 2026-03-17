@@ -227,3 +227,13 @@ tr:hover td { background: #EDF8F8; }
 .score-box:nth-child(5) { animation-delay:0.25s; }
 
 .field input::placeholder { color: #B0C0C0; font-style: italic; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%,100% { opacity: 0.4; }
+  50%     { opacity: 0.9; }
+}

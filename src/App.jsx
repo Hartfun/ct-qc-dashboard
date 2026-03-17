@@ -6,8 +6,7 @@ import ParameterTable from './components/ParameterTable'
 const API = 'https://ct-qc-ml.onrender.com'
 
 const defaultValues = {
-  serial_No: '',
-  Date: '',
+  serial_No: '', Date: '',
   st15: '', st5: '', st10: '',
   kv80: '', kv110: '', kv130: '',
   t08: '', t1: '', t15: '',
@@ -15,54 +14,20 @@ const defaultValues = {
   lf: '', lb: '', ll: '', lr: ''
 }
 
-const placeholders = {
-  serial_No: 'e.g. 138249',
-  Date: '',
-  st15: '1.5', st5: '5.0', st10: '10.0',
-  kv80: '80', kv110: '110', kv130: '130',
-  t08: '0.8', t1: '1.0', t15: '1.5',
-  dhead: '21.50', dbody: '10.60',
-  lf: '0.0', lb: '0.0', ll: '0.0', lr: '0.0'
-}
-
-const field = (label, id, type = 'number') => (
-  <div className="field" key={id} style={{
-    transform: focused === id ? 'scale(1.02)' : 'scale(1)',
-    transition: 'transform 0.15s'
-  }}>
-    <label>{label}</label>
-    <input
-      type={type}
-      step="any"
-      value={form[id]}
-      placeholder={placeholders[id] || ''}
-      onChange={e => onChange(id, e.target.value)}
-      onFocus={() => setFocused(id)}
-      onBlur={e => {
-        setFocused(null)
-        if (type === 'number' && e.target.value !== '')
-          onChange(id, parseFloat(e.target.value) || 0)
-      }}
-    />
-  </div>
-)
-
 export default function App() {
-  const [form, setForm]           = useState(defaultValues)
-  const [result, setResult]       = useState(null)
-  const [loading, setLoading]     = useState(false)
-  const [apiOnline, setApiOnline] = useState(false)
-  const [apiMsg, setApiMsg]       = useState('Checking API...')
-  const [error, setError]         = useState(null)
-  const [resultKey, setResultKey] = useState(0)
+  const [form, setForm]             = useState(defaultValues)
+  const [result, setResult]         = useState(null)
+  const [loading, setLoading]       = useState(false)
+  const [apiOnline, setApiOnline]   = useState(false)
+  const [apiMsg, setApiMsg]         = useState('Checking API...')
+  const [error, setError]           = useState(null)
+  const [resultKey, setResultKey]   = useState(0)
+  const [showResult, setShowResult] = useState(false)  // ← NEW
 
   useEffect(() => {
     fetch(API + '/health')
       .then(r => r.json())
-      .then(() => {
-        setApiOnline(true)
-        setApiMsg('API Online — ct-qc-ml.onrender.com')
-      })
+      .then(() => { setApiOnline(true); setApiMsg('API Online — ct-qc-ml.onrender.com') })
       .catch(() => setApiMsg('API waking up... (~30s)'))
   }, [])
 
@@ -72,10 +37,10 @@ export default function App() {
     setLoading(true)
     setError(null)
     setResult(null)
+    setShowResult(false)  // ← reset
 
     const body = {
-      'serial No': form.serial_No,
-      'Date': form.Date,
+      'serial No': form.serial_No, 'Date': form.Date,
       'Slice thickness 1.5': parseFloat(form.st15),
       'Slice thickness 5': parseFloat(form.st5),
       'Slice thickness 10': parseFloat(form.st10),
@@ -94,7 +59,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(API + '/predict', {
+      const res  = await fetch(API + '/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -103,11 +68,10 @@ export default function App() {
       setResultKey(k => k + 1)
       setResult(data)
       setTimeout(() => {
-        document.getElementById('result-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        document.getElementById('result-section')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
 
     setLoading(false)
   }
@@ -132,22 +96,32 @@ export default function App() {
       </header>
 
       <div className="container">
-        <InputForm
-          form={form}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          loading={loading}
-        />
+        <InputForm form={form} onChange={handleChange} onSubmit={handleSubmit} loading={loading} />
 
         <div id="result-section">
           {error && (
             <div className="result fail">
-              <h2>❌ Connection Error</h2>
-              <p>{error}</p>
+              <h2>❌ Connection Error</h2><p>{error}</p>
             </div>
           )}
-          {result && <ResultCard key={resultKey} result={result} />}
-          {result && <ParameterTable key={resultKey + 'table'} breakdown={result.parameter_breakdown} />}
+
+          {/* Table first — one by one, then triggers showResult */}
+          {result && (
+            <ParameterTable
+              key={resultKey + 'table'}
+              breakdown={result.parameter_breakdown}
+              onComplete={() => setShowResult(true)}  // ← fires after last row
+            />
+          )}
+
+          {/* Result card appears AFTER table finishes */}
+          {result && (
+            <ResultCard
+              key={resultKey}
+              result={result}
+              show={showResult}
+            />
+          )}
         </div>
       </div>
     </>
