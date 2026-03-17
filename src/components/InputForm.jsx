@@ -38,9 +38,9 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         <div className="section-header teal-mid">📐 Slice Thickness (mm)</div>
         <div className="section-body bg-teal-pale">
           <div className="grid mb">
-            {field('1.5 mm (±0.5)', 'st15')}
-            {field('5 mm (±2.5%)', 'st5')}
-            {field('10 mm (±5.0)', 'st10')}
+            {field('1.5 mm', 'st15')}
+            {field('5 mm', 'st5')}
+            {field('10 mm', 'st10')}
           </div>
         </div>
       </div>
@@ -49,9 +49,9 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         <div className="section-header orange">⚡ KV Accuracy</div>
         <div className="section-body bg-orange-pale">
           <div className="grid mb">
-            {field('80 kV (±2kV)', 'kv80')}
-            {field('110 kV (±2kV)', 'kv110')}
-            {field('130 kV (±2kV)', 'kv130')}
+            {field('80 kV', 'kv80')}
+            {field('110 kV', 'kv110')}
+            {field('130 kV', 'kv130')}
           </div>
         </div>
       </div>
@@ -60,9 +60,9 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         <div className="section-header teal">⏱ Timer Accuracy</div>
         <div className="section-body bg-teal-pale">
           <div className="grid mb">
-            {field('0.8s (±10%)', 't08')}
-            {field('1.0s (±10%)', 't1')}
-            {field('1.5s (±10%)', 't15')}
+            {field('0.8s', 't08')}
+            {field('1.0s', 't1')}
+            {field('1.5s', 't15')}
           </div>
         </div>
       </div>
@@ -71,8 +71,8 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         <div className="section-header orange">☢️ Radiation Dose</div>
         <div className="section-body bg-orange-pale">
           <div className="grid mb">
-            {field('Head 21.50 (±20%)', 'dhead')}
-            {field('Body 10.60 (±20%)', 'dbody')}
+            {field('Head 21.50', 'dhead')}
+            {field('Body 10.60', 'dbody')}
           </div>
         </div>
       </div>
