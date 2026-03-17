@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import InputForm from './components/InputForm'
 import ResultCard from './components/ResultCard'
 import ParameterTable from './components/ParameterTable'
+import logoUrl from './assets/logo_WP.svg'
 
 const API = 'https://ct-qc-ml.onrender.com'
 
@@ -22,7 +23,7 @@ export default function App() {
   const [apiMsg, setApiMsg]         = useState('Checking API...')
   const [error, setError]           = useState(null)
   const [resultKey, setResultKey]   = useState(0)
-  const [showResult, setShowResult] = useState(false)  // ← NEW
+  const [showResult, setShowResult] = useState(false)
 
   useEffect(() => {
     fetch(API + '/health')
@@ -37,7 +38,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     setResult(null)
-    setShowResult(false)  // ← reset
+    setShowResult(false)
 
     const body = {
       'serial No': form.serial_No, 'Date': form.Date,
@@ -81,12 +82,15 @@ export default function App() {
       <header>
         <div className="header-inner">
           <div className="header-left">
-            <div className="header-logo">🏥</div>
-            <div>
-              <h1>CT QC Anomaly Detection</h1>
-              <div className="subtitle">ISO + LOF Ensemble Model &nbsp;|&nbsp; MSc Big Data 2026</div>
-            </div>
-          </div>
+            <img src={logoUrl} alt="Logo" style={{
+              height: '66px',width: 'auto',filter: 'brightness(0) invert(1)',objectFit: 'contain'
+              }}/>
+          <div>
+      <h1>CT QC Anomaly Detection</h1>
+      <div className="subtitle">ISO + LOF Ensemble Model &nbsp;|&nbsp; MSc Big Data 2026</div>
+  </div>
+</div>
+
           <div className="status-bar">
             <div className={`dot ${apiOnline ? 'online' : ''}`} />
             <span>{apiMsg}</span>
@@ -105,16 +109,14 @@ export default function App() {
             </div>
           )}
 
-          {/* Table first — one by one, then triggers showResult */}
           {result && (
             <ParameterTable
               key={resultKey + 'table'}
               breakdown={result.parameter_breakdown}
-              onComplete={() => setShowResult(true)}  // ← fires after last row
+              onComplete={() => setShowResult(true)}
             />
           )}
 
-          {/* Result card appears AFTER table finishes */}
           {result && (
             <ResultCard
               key={resultKey}
