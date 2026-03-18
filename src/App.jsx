@@ -12,7 +12,7 @@ const defaultValues = {
   kv80: '', kv110: '', kv130: '',
   t08: '', t1: '', t15: '',
   dhead: '', dbody: '',
-  lcr: '', hcr: '',          // FIX: added missing Low/High Contrast Resolution fields
+  lcr: '', hcr: '',
   lf: '', lb: '', ll: '', lr: ''
 }
 
@@ -41,8 +41,6 @@ export default function App() {
     setResult(null)
     setShowResult(false)
 
-    // FIX: key is "serial_No" (underscore) to match Pydantic ScanInput field name
-    // FIX: added Low Contrast Resolution and High Contrast Resolution
     const body = {
       'serial_No':                         form.serial_No,
       'Slice thickness 1.5':               parseFloat(form.st15),

@@ -79,7 +79,6 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         </div>
       </div>
 
-      {/* FIX: Low Contrast Resolution and High Contrast Resolution were missing entirely */}
       <div className="section-group" style={{ marginTop: '12px' }}>
         <div className="section-header purple-mid">🔬 Contrast Resolution (lp/cm)</div>
         <div className="section-body bg-purple-pale">

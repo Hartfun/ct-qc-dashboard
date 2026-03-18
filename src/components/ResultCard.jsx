@@ -18,7 +18,6 @@ function AnimatedNumber({ value, decimals = 4 }) {
 }
 
 function getDescription(d) {
-  // FIX: leakage lives in parameter_breakdown.Leakage, not at the top level of the API response
   const leakage    = d.parameter_breakdown?.Leakage ?? {}
   const leakPass   = leakage.pass    ?? true
   const leakMaxRaw = leakage.max_raw ?? 0
@@ -68,7 +67,6 @@ export default function ResultCard({ result: d, show }) {
 
   if (!show) return null
 
-  // FIX: pull leakage from correct nested location
   const leakage    = d.parameter_breakdown?.Leakage ?? {}
   const leakPass   = leakage.pass    ?? true
   const leakMaxRaw = leakage.max_raw ?? 0

@@ -19,11 +19,9 @@ function DevBar({ pct, tolerance }) {
 }
 
 export default function ParameterTable({ breakdown, onComplete }) {
-  // Separate imaging params from the Leakage summary
   const entries = Object.entries(breakdown).filter(([k]) => k !== 'Leakage')
   const leakage = breakdown?.Leakage
 
-  // Build one flat list: imaging rows + leakage row at the end
   const allRows = [
     ...entries.map(([k, v]) => ({ key: k, ...v })),
     ...(leakage ? [{
