@@ -16,7 +16,6 @@ export const defaultValues = {
   lf: '', lb: '', ll: '', lr: '',
 }
 
-// Map form field ids to API body keys
 const FIELD_MAP = {
   serial_No: 'serial_No',
   'Slice thickness 1.5':               'st15',
@@ -71,7 +70,6 @@ export default function App() {
     setResult(null)
     setShowResult(false)
 
-    // Build the request body — InputForm guarantees all values are valid by this point
     const body = {
       serial_No:                           form.serial_No.trim(),
       'Slice thickness 1.5':               parseFloat(form.st15),
@@ -93,7 +91,6 @@ export default function App() {
       'Radiation Leakage Levels (Right)':  parseFloat(form.lr),
     }
 
-    // Sanity guard: reject any NaN that slipped through
     const nanField = Object.entries(body).find(
       ([k, v]) => k !== 'serial_No' && (typeof v !== 'number' || !isFinite(v))
     )
@@ -111,11 +108,10 @@ export default function App() {
       })
 
       if (!res.ok) {
-        // Try to parse FastAPI validation error detail
         const errBody = await res.json().catch(() => ({}))
         const detail  = errBody.detail
         if (Array.isArray(detail)) {
-          // Pydantic v2 returns an array of {loc, msg, type}
+
           const msgs = detail.map(e => `${e.loc?.slice(1).join('.')} — ${e.msg}`).join('\n')
           throw new Error(`Validation error from server:\n${msgs}`)
         }
@@ -124,7 +120,6 @@ export default function App() {
 
       const data = await res.json()
 
-      // Defensive check — ensure we got the expected shape
       if (!data.parameter_breakdown || data.ensemble_score === undefined) {
         throw new Error('Unexpected response shape from server. Please try again.')
       }
