@@ -3,19 +3,21 @@ import { useState } from 'react'
 export default function InputForm({ form, onChange, onSubmit, loading }) {
   const [focused, setFocused] = useState(null)
 
-  const field = (label, id, type = 'number') => (
-    <div className="field" key={id} style={{
-      transform: focused === id ? 'scale(1.02)' : 'scale(1)',
-      transition: 'transform 0.15s'
-    }}>
+  const field = (label, id, type = 'number', placeholder = '') => (
+    <div
+      className="field"
+      key={id}
+      style={{ transform: focused === id ? 'scale(1.02)' : 'scale(1)', transition: 'transform 0.15s' }}
+    >
       <label>{label}</label>
       <input
         type={type} step="any" value={form[id]}
+        placeholder={placeholder}
         onChange={e => onChange(id, e.target.value)}
         onFocus={() => setFocused(id)}
         onBlur={e => {
           setFocused(null)
-          if (type === 'number') onChange(id, parseFloat(e.target.value) || 0)
+          if (type === 'number') onChange(id, parseFloat(e.target.value) || '')
         }}
       />
     </div>
@@ -25,66 +27,77 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
     <div className="card">
 
       <div className="section-group">
-        <div className="section-header teal">📋 CT Scanner Test Record</div>
+        <div className="section-header purple">📋 CT Scanner Test Record</div>
         <div className="section-body bg-gray-pale">
           <div className="grid mb">
-            {field('Serial No', 'serial_No', 'text')}
+            {field('Serial No', 'serial_No', 'text', 'e.g. CT-001')}
             {field('Date', 'Date', 'date')}
           </div>
         </div>
       </div>
 
-      <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header teal-mid">📐 Slice Thickness (mm)</div>
-        <div className="section-body bg-teal-pale">
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header purple-mid">📐 Slice Thickness (mm)</div>
+        <div className="section-body bg-purple-pale">
           <div className="grid mb">
-            {field('1.5 mm', 'st15')}
-            {field('5 mm', 'st5')}
-            {field('10 mm', 'st10')}
+            {field('1.5 mm  (spec: 1.5)', 'st15', 'number', '1.5')}
+            {field('5 mm  (spec: 5.0)', 'st5', 'number', '5.0')}
+            {field('10 mm  (spec: 10.0)', 'st10', 'number', '10.0')}
           </div>
         </div>
       </div>
 
-      <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header orange">⚡ KV Accuracy</div>
-        <div className="section-body bg-orange-pale">
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header purple-dark">⚡ KV Accuracy</div>
+        <div className="section-body bg-purple-pale">
           <div className="grid mb">
-            {field('80 kV', 'kv80')}
-            {field('110 kV', 'kv110')}
-            {field('130 kV', 'kv130')}
+            {field('80 kV  (spec: 80)', 'kv80', 'number', '80')}
+            {field('110 kV  (spec: 110)', 'kv110', 'number', '110')}
+            {field('130 kV  (spec: 130)', 'kv130', 'number', '130')}
           </div>
         </div>
       </div>
 
-      <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header teal">⏱ Timer Accuracy</div>
-        <div className="section-body bg-teal-pale">
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header purple">⏱ Timer Accuracy</div>
+        <div className="section-body bg-purple-pale">
           <div className="grid mb">
-            {field('0.8s', 't08')}
-            {field('1.0s', 't1')}
-            {field('1.5s', 't15')}
+            {field('0.8 s  (spec: 0.8)', 't08', 'number', '0.8')}
+            {field('1.0 s  (spec: 1.0)', 't1', 'number', '1.0')}
+            {field('1.5 s  (spec: 1.5)', 't15', 'number', '1.5')}
           </div>
         </div>
       </div>
 
-      <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header orange">☢️ Radiation Dose</div>
-        <div className="section-body bg-orange-pale">
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header purple-dark">☢️ Radiation Dose (mGy)</div>
+        <div className="section-body bg-purple-pale">
           <div className="grid mb">
-            {field('Head', 'dhead')}
-            {field('Body', 'dbody')}
+            {field('Head  (spec: 21.50)', 'dhead', 'number', '21.50')}
+            {field('Body  (spec: 10.60)', 'dbody', 'number', '10.60')}
           </div>
         </div>
       </div>
 
-      <div className="section-group" style={{marginTop:'12px'}}>
-        <div className="section-header gray">🔬 Leakage (mR/hr)</div>
+      {/* FIX: Low Contrast Resolution and High Contrast Resolution were missing entirely */}
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header purple-mid">🔬 Contrast Resolution (lp/cm)</div>
+        <div className="section-body bg-purple-pale">
+          <div className="grid mb">
+            {field('Low Contrast  (spec: ≤5.0)', 'lcr', 'number', '5.0')}
+            {field('High Contrast  (spec: 6.24)', 'hcr', 'number', '6.24')}
+          </div>
+        </div>
+      </div>
+
+      <div className="section-group" style={{ marginTop: '12px' }}>
+        <div className="section-header gray">🛡️ Radiation Leakage (mR/hr)</div>
         <div className="section-body">
           <div className="leak-grid mb">
-            {field('🔼 Front', 'lf')}
-            {field('🔽 Back', 'lb')}
-            {field('◀️ Left', 'll')}
-            {field('▶️ Right', 'lr')}
+            {field('🔼 Front', 'lf', 'number', '0.0')}
+            {field('🔽 Back', 'lb', 'number', '0.0')}
+            {field('◀️ Left', 'll', 'number', '0.0')}
+            {field('▶️ Right', 'lr', 'number', '0.0')}
           </div>
         </div>
       </div>

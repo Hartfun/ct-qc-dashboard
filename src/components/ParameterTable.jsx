@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 
 function DevBar({ pct, tolerance }) {
   const [width, setWidth] = useState(0)
-  const ratio = Math.min((Math.abs(pct) / tolerance) * 100, 100)
-  const cls = ratio < 50 ? '' : ratio < 80 ? 'warn' : 'danger'
+  const ratio = Math.min((Math.abs(pct) / (tolerance || 1)) * 100, 100)
+  const cls   = ratio < 50 ? '' : ratio < 80 ? 'warn' : 'danger'
   useEffect(() => {
     const t = setTimeout(() => setWidth(ratio), 100)
     return () => clearTimeout(t)
@@ -19,7 +19,23 @@ function DevBar({ pct, tolerance }) {
 }
 
 export default function ParameterTable({ breakdown, onComplete }) {
-  const entries = Object.entries(breakdown)
+  // Separate imaging params from the Leakage summary
+  const entries = Object.entries(breakdown).filter(([k]) => k !== 'Leakage')
+  const leakage = breakdown?.Leakage
+
+  // Build one flat list: imaging rows + leakage row at the end
+  const allRows = [
+    ...entries.map(([k, v]) => ({ key: k, ...v })),
+    ...(leakage ? [{
+      key:           'Leakage (Max)',
+      value:         leakage.max_raw,
+      spec:          leakage.limit,
+      tolerance:     leakage.limit,
+      pct_deviation: leakage.norm != null ? ((leakage.norm - leakage.limit) / leakage.limit) * 100 : 0,
+      pass:          leakage.pass,
+    }] : []),
+  ]
+
   const [visibleCount, setVisibleCount] = useState(0)
 
   useEffect(() => {
@@ -28,7 +44,7 @@ export default function ParameterTable({ breakdown, onComplete }) {
     const timer = setInterval(() => {
       i++
       setVisibleCount(i)
-      if (i >= entries.length) {
+      if (i >= allRows.length) {
         clearInterval(timer)
         setTimeout(() => onComplete && onComplete(), 400)
       }
@@ -45,31 +61,27 @@ export default function ParameterTable({ breakdown, onComplete }) {
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Measured</th>
-              <th>Spec</th>
-              <th>Tolerance</th>
-              <th>Deviation</th>
-              <th>Status</th>
+              <th>Parameter</th><th>Measured</th><th>Spec</th>
+              <th>Tolerance</th><th>Deviation</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map(([k, v], idx) =>
+            {allRows.map((v, idx) =>
               idx < visibleCount ? (
-                <tr className="table-row" key={k} style={{ animation: 'slideIn 0.35s ease both' }}>
-                  <td style={{ fontWeight: 500 }}>{k}</td>
+                <tr className="table-row" key={v.key} style={{ animation: 'slideIn 0.35s ease both' }}>
+                  <td style={{ fontWeight: 500 }}>{v.key}</td>
                   <td><b>{v.value}</b></td>
-                  <td style={{ color: '#64748b' }}>{v.spec}</td>
-                  <td style={{ color: '#64748b' }}>±{v.tolerance}</td>
-                  <td><DevBar pct={v.pct_deviation} tolerance={v.tolerance} /></td>
+                  <td style={{ color: '#9b89e8' }}>{v.spec}</td>
+                  <td style={{ color: '#9b89e8' }}>±{v.tolerance}</td>
+                  <td><DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} /></td>
                   <td><span className={`badge ${v.pass ? 'pass' : 'fail'}`}>{v.pass ? '✅ PASS' : '❌ FAIL'}</span></td>
                 </tr>
               ) : (
-                <tr key={k} style={{ opacity: 0.12 }}>
-                  <td style={{ color: '#ccc', fontWeight: 500 }}>{k}</td>
+                <tr key={v.key} style={{ opacity: 0.12 }}>
+                  <td style={{ color: '#555', fontWeight: 500 }}>{v.key}</td>
                   <td colSpan={5}>
                     <div style={{
-                      height: '8px', background: '#E8E8E8', borderRadius: '99px',
+                      height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px',
                       margin: '6px 0', animation: 'shimmer 1.2s ease-in-out infinite',
                       width: `${40 + (idx * 17) % 40}%`
                     }} />
@@ -83,68 +95,57 @@ export default function ParameterTable({ breakdown, onComplete }) {
 
       {/* ── MOBILE CARDS ── */}
       <div className="table-mobile">
-        {entries.map(([k, v], idx) =>
-        idx < visibleCount ? (
-            <div key={k} className="param-card" style={{ animation: 'slideIn 0.35s ease both' }}>
-
-        {/* Name */}
-        <div className="param-name">{k}</div>
-
-        {/* Row 1: Measured | Spec | Tolerance */}
-        <div className="param-row">
-          <div className="param-cell">
-            <span className="param-label">Measured</span>
-            <span className="param-value"><b>{v.value}</b></span>
-          </div>
-          <div className="param-cell">
-            <span className="param-label">Spec</span>
-            <span className="param-value">{v.spec}</span>
-          </div>
-          <div className="param-cell">
-            <span className="param-label">Tolerance</span>
-            <span className="param-value">±{v.tolerance}</span>
-          </div>
-        </div>
-
-        {/* Row 2: Deviation full width */}
-        <div className="param-full-row">
-          <span className="param-label">Deviation</span>
-          <DevBar pct={v.pct_deviation} tolerance={v.tolerance} />
-        </div>
-
-        {/* Row 3: Status full width centered */}
-        <div className="param-full-row param-status-row">
-          <span className="param-label">Status</span>
-          <span className={`badge ${v.pass ? 'pass' : 'fail'}`}>
-            {v.pass ? '✅ PASS' : '❌ FAIL'}
-          </span>
-        </div>
-
+        {allRows.map((v, idx) =>
+          idx < visibleCount ? (
+            <div key={v.key} className="param-card" style={{ animation: 'slideIn 0.35s ease both' }}>
+              <div className="param-name">{v.key}</div>
+              <div className="param-row">
+                <div className="param-cell">
+                  <span className="param-label">Measured</span>
+                  <span className="param-value"><b>{v.value}</b></span>
+                </div>
+                <div className="param-cell">
+                  <span className="param-label">Spec</span>
+                  <span className="param-value">{v.spec}</span>
+                </div>
+                <div className="param-cell">
+                  <span className="param-label">Tolerance</span>
+                  <span className="param-value">±{v.tolerance}</span>
+                </div>
+              </div>
+              <div className="param-full-row">
+                <span className="param-label">Deviation</span>
+                <DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} />
+              </div>
+              <div className="param-full-row param-status-row">
+                <span className="param-label">Status</span>
+                <span className={`badge ${v.pass ? 'pass' : 'fail'}`}>{v.pass ? '✅ PASS' : '❌ FAIL'}</span>
+              </div>
+            </div>
+          ) : (
+            <div key={v.key} className="param-card" style={{ opacity: 0.15 }}>
+              <div className="param-name" style={{ color: 'rgba(255,255,255,0.2)' }}>{v.key}</div>
+              <div style={{
+                height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px',
+                margin: '8px 0', animation: 'shimmer 1.2s ease-in-out infinite',
+                width: `${40 + (idx * 17) % 40}%`
+              }} />
+            </div>
+          )
+        )}
       </div>
-    ) : (
-      <div key={k} className="param-card" style={{ opacity: 0.15 }}>
-        <div className="param-name" style={{ color: '#ccc' }}>{k}</div>
-        <div style={{
-          height: '8px', background: '#E8E8E8', borderRadius: '99px',
-          margin: '8px 0', animation: 'shimmer 1.2s ease-in-out infinite',
-          width: `${40 + (idx * 17) % 40}%`
-        }} />
-      </div>
-    )
-  )}
-        </div>
 
-      {/* Progress bar */}
+      {/* ── Progress ── */}
       <div style={{ marginTop: '14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#888', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
           <span>Checking parameters...</span>
-          <span>{visibleCount} / {entries.length}</span>
+          <span>{Math.min(visibleCount, allRows.length)} / {allRows.length}</span>
         </div>
         <div className="progress-wrap" style={{ height: '7px' }}>
           <div className="progress-bar" style={{
-            width: `${(visibleCount / entries.length) * 100}%`,
+            width: `${(Math.min(visibleCount, allRows.length) / allRows.length) * 100}%`,
             transition: 'width 0.3s ease',
-            background: visibleCount === entries.length ? 'var(--teal)' : 'var(--orange)'
+            background: visibleCount >= allRows.length ? '#6a5acd' : '#9b89e8'
           }} />
         </div>
       </div>
