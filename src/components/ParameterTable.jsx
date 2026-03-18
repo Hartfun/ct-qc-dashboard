@@ -19,17 +19,23 @@ function DevBar({ pct, tolerance }) {
 }
 
 export default function ParameterTable({ breakdown, onComplete }) {
+  // Separate imaging params from the Leakage summary
   const entries = Object.entries(breakdown).filter(([k]) => k !== 'Leakage')
   const leakage = breakdown?.Leakage
 
+  // Build one flat list: imaging rows + leakage row at the end
   const allRows = [
     ...entries.map(([k, v]) => ({ key: k, ...v })),
     ...(leakage ? [{
-      key:           'Leakage (Max)',
-      value:         leakage.max_raw,
-      spec:          leakage.limit,
-      tolerance:     leakage.limit,
-      pct_deviation: leakage.norm != null ? ((leakage.norm - leakage.limit) / leakage.limit) * 100 : 0,
+      key:           'Leakage (Normalised)',
+      // show the normalised value in the Measured column, raw max in parentheses
+      value:         `${leakage.norm?.toFixed(4)} (raw: ${leakage.max_raw})`,
+      spec:          leakage.limit,    // 1.0
+      tolerance:     leakage.limit,    // deviation bar fills to 100% at the limit
+      // pct_deviation relative to the limit (1.0)
+      pct_deviation: leakage.norm != null
+        ? ((leakage.norm - leakage.limit) / leakage.limit) * 100
+        : 0,
       pass:          leakage.pass,
     }] : []),
   ]
