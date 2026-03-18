@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 
-// Ordered list of every field id — defines the Enter-key navigation sequence
+// ─── Field order for Enter-key navigation ────────────────────────────────────
 const FIELD_ORDER = [
   'serial_No', 'Date',
   'st15', 'st5', 'st10',
@@ -11,12 +11,128 @@ const FIELD_ORDER = [
   'lf', 'lb', 'll', 'lr',
 ]
 
-export default function InputForm({ form, onChange, onSubmit, loading }) {
-  const [focused,   setFocused]   = useState(null)
-  const [dateError, setDateError] = useState('')   // future-date error message
-  const inputRefs = useRef({})                     // id → DOM input ref
+// ─── Per-field validation rules ──────────────────────────────────────────────
+// min/max are plausible physical bounds — not spec tolerances (those are the model's job)
+const RULES = {
+  serial_No: {
+    required: true,
+    pattern:  /^[A-Za-z0-9\-_/]{2,30}$/,
+    patternMsg: 'Use 2–30 characters: letters, numbers, hyphens, underscores or /.',
+  },
+  Date: {
+    required:  true,
+    noFuture:  true,
+    maxAgeDays: 365,
+  },
+  // Slice thickness (mm)
+  st15:  { required: true, min: 0.1,  max: 10,   unit: 'mm' },
+  st5:   { required: true, min: 0.5,  max: 20,   unit: 'mm' },
+  st10:  { required: true, min: 1,    max: 30,   unit: 'mm' },
+  // KV accuracy
+  kv80:  { required: true, min: 40,   max: 120,  unit: 'kV' },
+  kv110: { required: true, min: 60,   max: 150,  unit: 'kV' },
+  kv130: { required: true, min: 80,   max: 180,  unit: 'kV' },
+  // Timer accuracy (s)
+  t08:   { required: true, min: 0.01, max: 5,    unit: 's'  },
+  t1:    { required: true, min: 0.01, max: 5,    unit: 's'  },
+  t15:   { required: true, min: 0.01, max: 5,    unit: 's'  },
+  // Radiation dose (mGy)
+  dhead: { required: true, min: 1,    max: 100,  unit: 'mGy' },
+  dbody: { required: true, min: 0.5,  max: 60,   unit: 'mGy' },
+  // Contrast resolution (lp/cm)
+  lcr:   { required: true, min: 0.1,  max: 20,   unit: 'lp/cm' },
+  hcr:   { required: true, min: 0.1,  max: 30,   unit: 'lp/cm' },
+  // Leakage (mR/hr) — zero is valid
+  lf:    { required: true, min: 0,    max: 500,  unit: 'mR/hr' },
+  lb:    { required: true, min: 0,    max: 500,  unit: 'mR/hr' },
+  ll:    { required: true, min: 0,    max: 500,  unit: 'mR/hr' },
+  lr:    { required: true, min: 0,    max: 500,  unit: 'mR/hr' },
+}
 
-  // Focus the next field in FIELD_ORDER when Enter is pressed
+function validateField(id, value) {
+  const rule = RULES[id]
+  if (!rule) return ''
+
+  // ── Text / date fields ────────────────────────────────────────────────────
+  if (id === 'serial_No') {
+    if (!value || value.trim() === '') return 'Serial No is required.'
+    if (!rule.pattern.test(value.trim())) return rule.patternMsg
+    return ''
+  }
+
+  if (id === 'Date') {
+    if (!value) return 'Date is required.'
+    const entered = new Date(value)
+    if (isNaN(entered.getTime())) return 'Enter a valid date.'
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    if (entered > today) return 'Date cannot be in the future.'
+    const oldest = new Date(); oldest.setDate(oldest.getDate() - rule.maxAgeDays)
+    if (entered < oldest) return `Date must be within the last ${rule.maxAgeDays} days.`
+    return ''
+  }
+
+  // ── Numeric fields ────────────────────────────────────────────────────────
+  if (value === '' || value === null || value === undefined)
+    return 'This field is required.'
+
+  const num = parseFloat(value)
+  if (isNaN(num) || !isFinite(num)) return 'Enter a valid number.'
+  if (rule.min !== undefined && num < rule.min)
+    return `Must be ≥ ${rule.min} ${rule.unit}.`
+  if (rule.max !== undefined && num > rule.max)
+    return `Must be ≤ ${rule.max} ${rule.unit}. Check your reading.`
+  return ''
+}
+
+// Validate all fields and return { id: errorString } map
+function validateAll(form) {
+  const errs = {}
+  for (const id of FIELD_ORDER) {
+    const msg = validateField(id, form[id])
+    if (msg) errs[id] = msg
+  }
+  return errs
+}
+
+// ─── Inline error annotation ─────────────────────────────────────────────────
+function FieldError({ msg }) {
+  if (!msg) return null
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: '6px',
+      marginTop: '5px', padding: '6px 10px',
+      background: 'rgba(220,60,60,0.15)',
+      border: '1px solid rgba(220,60,60,0.38)',
+      borderRadius: '6px', fontSize: '0.73rem', lineHeight: '1.4',
+      color: '#ffaaaa', animation: 'fadeUp 0.18s ease both',
+    }}>
+      <span style={{ flexShrink: 0 }}>⚠️</span>
+      <span>{msg}</span>
+    </div>
+  )
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+export default function InputForm({ form, onChange, onSubmit, loading }) {
+  const [touched,  setTouched]  = useState({})   // fields the user has visited
+  const [errors,   setErrors]   = useState({})   // current error map
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const inputRefs = useRef({})
+
+  // Recompute errors whenever form changes
+  useEffect(() => {
+    setErrors(validateAll(form))
+  }, [form])
+
+  const setRef = (id) => (el) => { inputRefs.current[id] = el }
+
+  const markTouched = (id) => setTouched(t => ({ ...t, [id]: true }))
+
+  // Show error only if the field has been touched OR submit was attempted
+  const visibleError = (id) =>
+    (touched[id] || submitAttempted) ? (errors[id] || '') : ''
+
+  // Enter → next field (or submit on last)
   const handleKeyDown = useCallback((e, id) => {
     if (e.key !== 'Enter') return
     e.preventDefault()
@@ -25,35 +141,42 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
     if (next && inputRefs.current[next]) {
       inputRefs.current[next].focus()
     } else {
-      // Last field — submit
-      onSubmit()
+      handleSubmitClick()
     }
-  }, [onSubmit])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form])
 
-  // Validate date: must not be in the future
-  const validateDate = useCallback((val) => {
-    if (!val) { setDateError(''); return }
-    const entered = new Date(val)
-    const today   = new Date()
-    today.setHours(0, 0, 0, 0)   // compare dates only, ignore time
-    if (entered > today) {
-      setDateError('Date cannot be in the future — please enter the actual test date.')
-    } else {
-      setDateError('')
+  const handleSubmitClick = () => {
+    setSubmitAttempted(true)
+    // Mark all touched so every error becomes visible
+    const all = {}
+    FIELD_ORDER.forEach(id => { all[id] = true })
+    setTouched(all)
+
+    const errs = validateAll(form)
+    if (Object.keys(errs).length > 0) {
+      // Focus the first field that has an error
+      const firstBad = FIELD_ORDER.find(id => errs[id])
+      if (firstBad && inputRefs.current[firstBad]) {
+        inputRefs.current[firstBad].focus()
+      }
+      return
     }
-  }, [])
+    onSubmit()
+  }
 
-  // Collect a ref for each input
-  const setRef = (id) => (el) => { inputRefs.current[id] = el }
+  // Shared input style — red border when there's a visible error
+  const inputStyle = (id) => visibleError(id) ? {
+    borderColor: '#e05555',
+    boxShadow:   '0 0 0 3px rgba(220,60,60,0.18)',
+  } : {}
 
   // Generic field renderer
   const field = (label, id, type = 'number', placeholder = '') => (
-    <div
-      className="field"
-      key={id}
-      style={{ transform: focused === id ? 'scale(1.02)' : 'scale(1)', transition: 'transform 0.15s' }}
-    >
-      <label htmlFor={id}>{label}</label>
+    <div className="field" key={id}>
+      <label htmlFor={id}>{label}{RULES[id]?.required && (
+        <span style={{ color: '#e08888', marginLeft: '3px' }}>*</span>
+      )}</label>
       <input
         id={id}
         ref={setRef(id)}
@@ -62,51 +185,48 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         value={form[id]}
         placeholder={placeholder}
         autoComplete="off"
+        style={inputStyle(id)}
         onChange={e => {
           onChange(id, e.target.value)
-          if (id === 'Date') validateDate(e.target.value)
+          markTouched(id)
         }}
-        onFocus={() => setFocused(id)}
+        onFocus={() => markTouched(id)}
         onBlur={e => {
-          setFocused(null)
-          if (type === 'number') onChange(id, parseFloat(e.target.value) || '')
-          if (id === 'Date') validateDate(e.target.value)
+          markTouched(id)
+          if (type === 'number' && e.target.value !== '') {
+            const n = parseFloat(e.target.value)
+            if (!isNaN(n)) onChange(id, n)
+          }
         }}
         onKeyDown={e => handleKeyDown(e, id)}
-        // Red border when date is invalid
-        style={id === 'Date' && dateError ? {
-          borderColor: '#e05555',
-          boxShadow:   '0 0 0 3px rgba(220,60,60,0.20)',
-        } : {}}
       />
-
-      {/* Future-date error annotation — only shown on the Date field */}
-      {id === 'Date' && dateError && (
-        <div style={{
-          display:      'flex',
-          alignItems:   'flex-start',
-          gap:          '6px',
-          marginTop:    '6px',
-          padding:      '7px 10px',
-          background:   'rgba(220,60,60,0.15)',
-          border:       '1px solid rgba(220,60,60,0.40)',
-          borderRadius: '6px',
-          fontSize:     '0.75rem',
-          lineHeight:   '1.4',
-          color:        '#ffaaaa',
-          animation:    'fadeUp 0.2s ease both',
-        }}>
-          <span style={{ fontSize: '0.85rem', flexShrink: 0 }}>⚠️</span>
-          <span>{dateError}</span>
-        </div>
-      )}
+      <FieldError msg={visibleError(id)} />
     </div>
   )
 
-  const hasDateError = Boolean(dateError)
+  const totalErrors   = Object.keys(errors).length
+  const hasAnyVisible = submitAttempted && totalErrors > 0
 
   return (
     <div className="card">
+
+      {/* ── Global validation summary (shown after first submit attempt) ── */}
+      {hasAnyVisible && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '10px 16px', marginBottom: '16px',
+          background: 'rgba(220,60,60,0.15)',
+          border: '1px solid rgba(220,60,60,0.40)',
+          borderRadius: '8px', fontSize: '0.82rem', color: '#ffbbbb',
+          animation: 'fadeUp 0.2s ease both',
+        }}>
+          <span style={{ fontSize: '1.1rem' }}>🚫</span>
+          <span>
+            {totalErrors} field{totalErrors > 1 ? 's' : ''} need{totalErrors === 1 ? 's' : ''} attention
+            before analysis can run.
+          </span>
+        </div>
+      )}
 
       {/* ── RECORD META ── */}
       <div className="section-group">
@@ -190,17 +310,34 @@ export default function InputForm({ form, onChange, onSubmit, loading }) {
         </div>
       </div>
 
-      {/* Submit — disabled while date error is active */}
+      {/* ── SUBMIT ── */}
       <button
         className="btn"
-        onClick={onSubmit}
-        disabled={loading || hasDateError}
-        title={hasDateError ? 'Fix the date error before submitting' : ''}
+        onClick={handleSubmitClick}
+        disabled={loading}
+        style={submitAttempted && totalErrors > 0 ? {
+          background: 'rgba(255,255,255,0.12)',
+          boxShadow:  'none',
+          cursor:     'not-allowed',
+        } : {}}
       >
         {loading
           ? <><span className="spinner" />Analysing...</>
-          : '🔍 Run QC Analysis'}
+          : submitAttempted && totalErrors > 0
+            ? `🚫 Fix ${totalErrors} error${totalErrors > 1 ? 's' : ''} to continue`
+            : '🔍 Run QC Analysis'}
       </button>
+
+      <p style={{
+        fontSize: '0.71rem', color: 'rgba(255,255,255,0.35)',
+        textAlign: 'center', marginTop: '8px',
+      }}>
+        Fields marked <span style={{ color: '#e08888' }}>*</span> are required.
+        Press <kbd style={{
+          background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)',
+          borderRadius: '3px', padding: '1px 5px', fontSize: '0.68rem',
+        }}>Enter</kbd> to advance to the next field.
+      </p>
 
     </div>
   )
