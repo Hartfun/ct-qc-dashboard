@@ -64,7 +64,7 @@ function validateField(id, value) {
     if (!value) return 'Date is required.'
     const entered = new Date(value)
     if (isNaN(entered.getTime())) return 'Enter a valid date.'
-    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const today = new Date(); today.setHours(23, 59, 59, 999)
     if (entered > today) return 'Date cannot be in the future.'
     const oldest = new Date(); oldest.setDate(oldest.getDate() - rule.maxAgeDays)
     if (entered < oldest) return `Date must be within the last ${rule.maxAgeDays} days.`
