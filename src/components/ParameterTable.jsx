@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 
+// oneSided=true means the metric has an upper limit only (lower = better, e.g. Low Contrast).
+// For one-sided: bar fills red when pct > 0 (above limit), green when pct <= 0 (below limit).
+// For two-sided (default): bar fills based on |pct| vs tolerance bands.
 function DevBar({ pct, tolerance, oneSided = false }) {
   const [width, setWidth] = useState(0)
   let ratio, cls
   if (oneSided) {
-
+    // Show how far above/below the upper limit the reading is (cap at 100%)
     ratio = Math.min(Math.abs(pct), 100)
-    cls   = pct > 0 ? 'danger' : ''   
+    cls   = pct > 0 ? 'danger' : ''   // above limit = red, at/below = green (no class = teal)
   } else {
     ratio = Math.min((Math.abs(pct) / (tolerance || 1)) * 100, 100)
     cls   = ratio < 50 ? '' : ratio < 80 ? 'warn' : 'danger'
@@ -31,22 +34,25 @@ function DevBar({ pct, tolerance, oneSided = false }) {
 }
 
 export default function ParameterTable({ breakdown, onComplete }) {
-
+  // Separate imaging params from the Leakage summary
   const entries = Object.entries(breakdown).filter(([k]) => k !== 'Leakage')
   const leakage = breakdown?.Leakage
 
+  // Build one flat list: imaging rows + leakage row at the end
   const allRows = [
     ...entries.map(([k, v]) => ({ key: k, ...v })),
     ...(leakage ? [{
-      key:           'Leakage (Normalised)',
-      value:         `${leakage.norm?.toFixed(4)} (raw: ${leakage.max_raw})`,
-      spec:          leakage.limit,    // 1.0
-      tolerance:     leakage.limit,    // deviation bar fills to 100% at the limit
-
-      pct_deviation: leakage.norm != null
-        ? ((leakage.norm - leakage.limit) / leakage.limit) * 100
+      key:           'Leakage (mR/hr)',
+      // Show raw max reading as the primary value. Norm shown in parentheses for reference.
+      value:         `${leakage.max_raw} (norm: ${leakage.norm?.toFixed(3)})`,
+      spec:          leakage.raw_limit ?? 115,   // AERB gate: 115 mR/hr
+      tolerance:     leakage.raw_limit ?? 115,
+      // pct_deviation = how far raw is from the 115 mR/hr AERB limit
+      pct_deviation: leakage.max_raw != null
+        ? ((leakage.max_raw - (leakage.raw_limit ?? 115)) / (leakage.raw_limit ?? 115)) * 100
         : 0,
       pass:          leakage.pass,
+      one_sided:     true,   // one-sided upper limit: lower raw = better
     }] : []),
   ]
 

@@ -18,6 +18,7 @@ function AnimatedNumber({ value, decimals = 4 }) {
 }
 
 function getDescription(d) {
+  // FIX: leakage lives in parameter_breakdown.Leakage, not at the top level of the API response
   const leakage    = d.parameter_breakdown?.Leakage ?? {}
   const leakPass   = leakage.pass    ?? true
   const leakMaxRaw = leakage.max_raw ?? 0
@@ -26,8 +27,9 @@ function getDescription(d) {
     .filter(([k, v]) => k !== 'Leakage' && !v.pass)
     .map(([k]) => k)
 
+  // leakNote only included when leakage actually fails the AERB raw limit (> 115 mR/hr)
   const leakNote = !leakPass
-    ? `Radiation leakage of ${leakMaxRaw} mR/hr exceeds the AERB limit of 115 mR/hr. `
+    ? `Radiation leakage of ${leakMaxRaw} mR/hr exceeds the AERB limit of 115 mR/hr (normalised ratio: ${leakage.norm?.toFixed(3)}). `
     : ''
 
   if (!d.overall_acceptance) {
@@ -51,9 +53,9 @@ function getDescription(d) {
   const paramCount = Object.keys(d.parameter_breakdown ?? {}).length
   return (
     `✅ This scanner passed all ${paramCount} parameter checks ` +
-    `with no anomalies detected by the ML model. Ensemble score of ${d.ensemble_score.toFixed(3)} ` +
-    `is above the threshold of ${d.threshold.toFixed(5)}, confirming normal operation. ` +
-    (leakPass ? `Max leakage of ${leakMaxRaw} mR/hr is well within the 115 mR/hr AERB limit. ` : '') +
+    `with no anomalies detected by the ML model. ` +
+    `Ensemble score of ${d.ensemble_score.toFixed(3)} is above the threshold of ${d.threshold.toFixed(5)}, confirming normal operation. ` +
+    (leakPass ? `Leakage of ${leakMaxRaw} mR/hr is within the AERB limit of 115 mR/hr (normalised ratio: ${leakage.norm?.toFixed(3)}). ` : '') +
     `Cleared for clinical use.`
   )
 }
@@ -67,14 +69,18 @@ export default function ResultCard({ result: d, show }) {
 
   if (!show) return null
 
+  // leakage lives in parameter_breakdown.Leakage
   const leakage    = d.parameter_breakdown?.Leakage ?? {}
   const leakPass   = leakage.pass    ?? true
-  const leakMaxRaw = leakage.max_raw ?? 0
+  const leakMaxRaw = leakage.max_raw ?? 0          // raw survey-meter reading (mR/hr)
+  const leakNorm   = leakage.norm    ?? 0           // (500 x max_raw) / (60 x 240) — informational ML feature, pass gate is raw <= 115
 
-  const cls   = d.overall_acceptance ? (d.anomaly_detected ? 'anomaly' : 'pass') : 'fail'
-  const icon  = d.overall_acceptance ? (d.anomaly_detected ? '⚠️' : '✅') : '❌'
+  // Colour and verdict are ALWAYS driven by the AERB rule-based check (overall_acceptance).
+  // The ML anomaly flag is a secondary advisory note in the description only.
+  const cls   = d.overall_acceptance ? 'pass' : 'fail'
+  const icon  = d.overall_acceptance ? '✅' : '❌'
   const title = d.overall_acceptance
-    ? (d.anomaly_detected ? 'ACCEPTED — ML Anomaly Flagged' : 'ACCEPTED — All Clear')
+    ? (d.anomaly_detected ? 'ACCEPTED — All Clear  ⚠️ ML Advisory' : 'ACCEPTED — All Clear')
     : 'REJECTED — Parameter Failure'
 
   return (
@@ -114,12 +120,20 @@ export default function ResultCard({ result: d, show }) {
           </div>
         ))}
 
+        {/* Two leakage score boxes: raw reading (AERB pass gate ≤115) + normalised (ML feature, informational) */}
+        <div className="score-box">
+          <div className="val">
+            <AnimatedNumber value={leakNorm} decimals={4} />
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.55)' }}> / 1.0</span>
+          </div>
+          <div className="lbl">Leakage Norm {leakPass ? '✅' : '❌'}</div>
+        </div>
         <div className="score-box">
           <div className="val">
             {leakMaxRaw}
             <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.55)' }}> mR/hr</span>
           </div>
-          <div className="lbl">Leakage Max {leakPass ? '✅' : '❌'}</div>
+          <div className="lbl">Leakage Raw</div>
         </div>
       </div>
     </div>
