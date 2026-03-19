@@ -70,7 +70,6 @@ header .subtitle { font-size: 0.78rem; color: var(--white-text); margin-top: 2px
 .section-header.purple-mid  { background: rgba(106,90,205,0.55); }
 .section-header.purple-dark { background: rgba(87,77,184,0.80); }
 .section-header.gray        { background: rgba(255,255,255,0.12); }
-/* keep old names working */
 .section-header.teal        { background: rgba(106,90,205,0.75); }
 .section-header.teal-mid    { background: rgba(106,90,205,0.55); }
 .section-header.orange      { background: rgba(87,77,184,0.80); }

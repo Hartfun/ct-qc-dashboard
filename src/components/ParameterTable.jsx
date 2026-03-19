@@ -1,16 +1,28 @@
 import { useEffect, useState } from 'react'
 
-function DevBar({ pct, tolerance }) {
+function DevBar({ pct, tolerance, oneSided = false }) {
   const [width, setWidth] = useState(0)
-  const ratio = Math.min((Math.abs(pct) / (tolerance || 1)) * 100, 100)
-  const cls   = ratio < 50 ? '' : ratio < 80 ? 'warn' : 'danger'
+  let ratio, cls
+  if (oneSided) {
+
+    ratio = Math.min(Math.abs(pct), 100)
+    cls   = pct > 0 ? 'danger' : ''   
+  } else {
+    ratio = Math.min((Math.abs(pct) / (tolerance || 1)) * 100, 100)
+    cls   = ratio < 50 ? '' : ratio < 80 ? 'warn' : 'danger'
+  }
   useEffect(() => {
     const t = setTimeout(() => setWidth(ratio), 100)
     return () => clearTimeout(t)
   }, [ratio])
+  const label = oneSided
+    ? (pct > 0 ? `+${pct.toFixed(2)}% above limit` : `${pct.toFixed(2)}% (within limit)`)
+    : `${pct.toFixed(2)}%`
   return (
     <div>
-      <span style={{ fontSize: '0.82rem' }}>{pct.toFixed(2)}%</span>
+      <span style={{ fontSize: '0.82rem', color: oneSided && pct > 0 ? '#ffaaaa' : 'inherit' }}>
+        {label}
+      </span>
       <div className="progress-wrap">
         <div className={`progress-bar ${cls}`} style={{ width: `${width}%` }} />
       </div>
@@ -19,20 +31,18 @@ function DevBar({ pct, tolerance }) {
 }
 
 export default function ParameterTable({ breakdown, onComplete }) {
-  // Separate imaging params from the Leakage summary
+
   const entries = Object.entries(breakdown).filter(([k]) => k !== 'Leakage')
   const leakage = breakdown?.Leakage
 
-  // Build one flat list: imaging rows + leakage row at the end
   const allRows = [
     ...entries.map(([k, v]) => ({ key: k, ...v })),
     ...(leakage ? [{
       key:           'Leakage (Normalised)',
-      // show the normalised value in the Measured column, raw max in parentheses
       value:         `${leakage.norm?.toFixed(4)} (raw: ${leakage.max_raw})`,
       spec:          leakage.limit,    // 1.0
       tolerance:     leakage.limit,    // deviation bar fills to 100% at the limit
-      // pct_deviation relative to the limit (1.0)
+
       pct_deviation: leakage.norm != null
         ? ((leakage.norm - leakage.limit) / leakage.limit) * 100
         : 0,
@@ -76,8 +86,8 @@ export default function ParameterTable({ breakdown, onComplete }) {
                   <td style={{ fontWeight: 500 }}>{v.key}</td>
                   <td><b>{v.value}</b></td>
                   <td style={{ color: '#9b89e8' }}>{v.spec}</td>
-                  <td style={{ color: '#9b89e8' }}>±{v.tolerance}</td>
-                  <td><DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} /></td>
+                  <td style={{ color: '#9b89e8' }}>{v.one_sided ? `≤${v.tolerance}` : `±${v.tolerance}`}</td>
+                  <td><DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} oneSided={v.one_sided ?? false} /></td>
                   <td><span className={`badge ${v.pass ? 'pass' : 'fail'}`}>{v.pass ? '✅ PASS' : '❌ FAIL'}</span></td>
                 </tr>
               ) : (
@@ -114,12 +124,12 @@ export default function ParameterTable({ breakdown, onComplete }) {
                 </div>
                 <div className="param-cell">
                   <span className="param-label">Tolerance</span>
-                  <span className="param-value">±{v.tolerance}</span>
+                  <span className="param-value">{v.one_sided ? `≤${v.tolerance}` : `±${v.tolerance}`}</span>
                 </div>
               </div>
               <div className="param-full-row">
                 <span className="param-label">Deviation</span>
-                <DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} />
+                <DevBar pct={v.pct_deviation ?? 0} tolerance={Math.abs(v.tolerance || 1)} oneSided={v.one_sided ?? false} />
               </div>
               <div className="param-full-row param-status-row">
                 <span className="param-label">Status</span>
